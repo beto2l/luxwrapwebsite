@@ -1,0 +1,15 @@
+{
+    "versions": [
+        {
+            "version": "1.0.0",
+            "date": "2026-08-25",
+            "hash": "4948f11",
+            "author": "beto2l",
+            "title": "Sección About responsiva en móvil",
+            "changes": [
+                "Se reemplazó la imagen de la tarjeta de contacto de la sección About por texto responsivo, para evitar que el correo se cortara en pantallas móviles.",
+                "El correo electrónico ahora se muestra en una sola línea y se ajusta automáticamente al ancho del dispositivo."
+            ]
+        }
+    ]
+}

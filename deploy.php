@@ -134,6 +134,43 @@ if (is_dir($sitePath . '/.git')) {
 @chmod($sitePath . '/uploads', 0775);
 @chmod($sitePath . '/data', 0775);
 
+// Escribir data/version.json con los datos de la última versión instalada.
+// Es la fuente de datos que consume el panel admin (botón "Última versión" + modal).
+if (!empty($result['success'])) {
+    $versionInfo = [
+        'deployed_at' => date('Y-m-d H:i:s'),
+        'method'      => $result['method'] ?? 'unknown',
+        'branch'      => $branch,
+    ];
+
+    // Si hay git disponible, agregar datos del último commit.
+    if (is_dir($sitePath . '/.git') && function_exists('shell_exec')) {
+        $gitLog = @shell_exec(
+            'cd ' . escapeshellarg($sitePath) .
+            " && git log -1 --date=format:'%Y-%m-%d %H:%M' --format='%h|%cd|%an|%s' 2>/dev/null"
+        );
+        if ($gitLog) {
+            $parts = explode('|', trim($gitLog), 4);
+            if (count($parts) === 4) {
+                $versionInfo['commit_hash'] = $parts[0];
+                $versionInfo['commit_date'] = $parts[1];
+                $versionInfo['author']      = $parts[2];
+                $versionInfo['subject']     = $parts[3];
+            }
+        }
+    }
+
+    $dataDir = $sitePath . '/data';
+    if (!is_dir($dataDir)) {
+        @mkdir($dataDir, 0775, true);
+    }
+    @file_put_contents(
+        $dataDir . '/version.json',
+        json_encode($versionInfo, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+    );
+    deploy_log('VERSION.JSON: ' . json_encode($versionInfo));
+}
+
 deploy_log('RESULT: ' . json_encode($result));
 deploy_log('===== FIN DE ACTUALIZACIÓN =====');
 

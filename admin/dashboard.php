@@ -20,6 +20,88 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
 // Secreto de despliegue leído del .env del servidor.
 // Solo se expone dentro de esta página, que está protegida por login de administrador.
 $deploySecret = function_exists('luxwrap_env') ? luxwrap_env('DEPLOY_SECRET', '') : '';
+
+/* ============================================================
+ *  Historial de versiones (botón "Última versión" + modal)
+ * ============================================================ */
+$siteRoot = dirname(__DIR__);
+
+/** Ejecuta un comando git dentro de la raíz del sitio y devuelve la salida. */
+function admin_git($siteRoot, $args) {
+    if (!is_dir($siteRoot . '/.git') || !function_exists('shell_exec')) {
+        return null;
+    }
+    $cmd = 'cd ' . escapeshellarg($siteRoot) . ' && git ' . $args . ' 2>/dev/null';
+    $out = @shell_exec($cmd);
+    return ($out === null) ? null : trim($out);
+}
+
+// 1) Versión actual instalada: data/version.json (lo escribe deploy.php) → fallback git.
+$currentVersion = null;
+$currentBranch = null;
+$versionFile = $siteRoot . '/data/version.json';
+
+if (is_file($versionFile)) {
+    $versionData = @json_decode(file_get_contents($versionFile), true);
+    if ($versionData && is_array($versionData)) {
+        $currentVersion = [
+            'hash'    => $versionData['commit_hash'] ?? null,
+            'date'    => $versionData['commit_date'] ?? $versionData['deployed_at'] ?? null,
+            'author'  => $versionData['author'] ?? null,
+            'subject' => $versionData['subject'] ?? null,
+            'method'  => $versionData['method'] ?? null,
+        ];
+        $currentBranch = $versionData['branch'] ?? null;
+    }
+}
+
+if (!$currentVersion) {
+    $rawCurrent = admin_git($siteRoot, "log -1 --date=format:'%Y-%m-%d %H:%M' --format='%h|%cd|%an|%s'");
+    if ($rawCurrent) {
+        $parts = explode('|', $rawCurrent, 4);
+        if (count($parts) === 4) {
+            $currentVersion = [
+                'hash' => $parts[0], 'date' => $parts[1],
+                'author' => $parts[2], 'subject' => $parts[3], 'method' => 'git',
+            ];
+        }
+    }
+    if (!$currentBranch) {
+        $currentBranch = admin_git($siteRoot, 'rev-parse --abbrev-ref HEAD');
+    }
+}
+
+// 2) Historial curado: data/versions.json → fallback a git log (últimas 3).
+$versionHistory = [];
+$versionsFile = $siteRoot . '/data/versions.json';
+if (is_file($versionsFile)) {
+    $vh = @json_decode(file_get_contents($versionsFile), true);
+    if (isset($vh['versions']) && is_array($vh['versions'])) {
+        $versionHistory = $vh['versions'];
+    }
+}
+
+// Fallback: construir historial desde git si no hay versions.json.
+if (empty($versionHistory)) {
+    $rawLog = admin_git($siteRoot, "log -n 3 --date=format:'%Y-%m-%d' --format='%h|%cd|%an|%s'");
+    if ($rawLog) {
+        foreach (explode("\n", $rawLog) as $line) {
+            $p = explode('|', $line, 4);
+            if (count($p) === 4) {
+                $versionHistory[] = [
+                    'version' => $p[0],
+                    'date'    => $p[1],
+                    'author'  => $p[2],
+                    'title'   => $p[3],
+                    'changes' => [$p[3]],
+                ];
+            }
+        }
+    }
+}
+
+// Mostrar solo las últimas 3 versiones (las más recientes primero).
+$latestVersions = array_slice($versionHistory, 0, 3);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -215,6 +297,205 @@ $deploySecret = function_exists('luxwrap_env') ? luxwrap_env('DEPLOY_SECRET', ''
             </div>
         </section>
     </main>
+
+    <!-- Footer del panel admin -->
+    <footer class="admin-footer">
+        <span class="admin-footer-text">
+            &copy; <?= date('Y') ?> LuxWrap Studio · Portfolio Manager
+        </span>
+        <button type="button" class="btn-version" onclick="openVersionModal()">
+            <i class="fas fa-code-branch"></i> Última versión
+            <?php if (!empty($currentVersion['hash'])): ?>
+                <code class="version-badge"><?= htmlspecialchars($currentVersion['hash']) ?></code>
+            <?php endif; ?>
+        </button>
+    </footer>
+
+    <!-- Modal flotante: historial de versiones -->
+    <div class="version-modal-overlay" id="versionModal" onclick="if(event.target===this)closeVersionModal()">
+        <div class="version-modal" role="dialog" aria-modal="true" aria-labelledby="versionModalTitle">
+            <div class="version-modal-header">
+                <h2 id="versionModalTitle"><i class="fas fa-code-branch"></i> Historial de versiones</h2>
+                <button type="button" class="version-modal-close" onclick="closeVersionModal()" aria-label="Cerrar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="version-modal-body">
+                <!-- Versión actual instalada -->
+                <div class="version-current">
+                    <span class="version-current-label">Versión actual instalada</span>
+                    <?php if ($currentVersion): ?>
+                        <dl class="version-grid">
+                            <?php if (!empty($currentVersion['hash'])): ?>
+                            <dt>Versión</dt><dd><code><?= htmlspecialchars($currentVersion['hash']) ?></code></dd>
+                            <?php endif; ?>
+                            <?php if (!empty($currentVersion['date'])): ?>
+                            <dt>Fecha</dt><dd><?= htmlspecialchars($currentVersion['date']) ?></dd>
+                            <?php endif; ?>
+                            <?php if (!empty($currentVersion['author'])): ?>
+                            <dt>Autor</dt><dd><?= htmlspecialchars($currentVersion['author']) ?></dd>
+                            <?php endif; ?>
+                            <?php if (!empty($currentVersion['subject'])): ?>
+                            <dt>Cambio</dt><dd><?= htmlspecialchars($currentVersion['subject']) ?></dd>
+                            <?php endif; ?>
+                            <?php if ($currentBranch): ?>
+                            <dt>Rama</dt><dd><?= htmlspecialchars($currentBranch) ?></dd>
+                            <?php endif; ?>
+                        </dl>
+                    <?php else: ?>
+                        <p class="muted">No se pudo determinar la versión instalada.</p>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Últimas 3 versiones -->
+                <h3 class="version-history-title">Últimos cambios</h3>
+                <?php if (!empty($latestVersions)): ?>
+                    <ul class="version-timeline">
+                        <?php foreach ($latestVersions as $v): ?>
+                            <li class="version-item">
+                                <div class="version-item-head">
+                                    <span class="version-item-tag"><?= htmlspecialchars($v['version'] ?? '—') ?></span>
+                                    <span class="version-item-date"><?= htmlspecialchars($v['date'] ?? '') ?></span>
+                                </div>
+                                <?php if (!empty($v['title'])): ?>
+                                    <p class="version-item-title"><?= htmlspecialchars($v['title']) ?></p>
+                                <?php endif; ?>
+                                <?php if (!empty($v['changes']) && is_array($v['changes'])): ?>
+                                    <ul class="version-item-changes">
+                                        <?php foreach ($v['changes'] as $change): ?>
+                                            <li><?= htmlspecialchars($change) ?></li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                <?php endif; ?>
+                                <?php if (!empty($v['author'])): ?>
+                                    <span class="version-item-author"><i class="fas fa-user"></i> <?= htmlspecialchars($v['author']) ?></span>
+                                <?php endif; ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php else: ?>
+                    <p class="muted">Aún no hay historial de cambios disponible.</p>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    /* ===== Footer + botón de versión ===== */
+    .admin-footer {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 12px;
+        padding: 20px 32px; margin-top: 24px;
+        border-top: 1px solid rgba(255,255,255,.08);
+        color: #9a9ab0; font-size: 13px;
+    }
+    .admin-footer-text { opacity: .85; }
+    .btn-version {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 9px 16px; border-radius: 10px; cursor: pointer;
+        font-size: 13px; font-weight: 600; color: #fff;
+        background: linear-gradient(135deg, #6a5cff, #b14cff);
+        border: 1px solid rgba(255,255,255,.14);
+        transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+    }
+    .btn-version:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(140,80,255,.35); }
+    .btn-version .version-badge {
+        background: rgba(0,0,0,.35); border-radius: 6px; padding: 1px 7px;
+        font-size: 12px; color: #d9c9ff;
+    }
+
+    /* ===== Modal ===== */
+    .version-modal-overlay {
+        display: none; position: fixed; inset: 0; z-index: 1000;
+        background: rgba(6,6,14,.72); backdrop-filter: blur(4px);
+        align-items: center; justify-content: center; padding: 20px;
+    }
+    .version-modal-overlay.open { display: flex; }
+    .version-modal {
+        width: 100%; max-width: 540px; max-height: 88vh; overflow: hidden;
+        display: flex; flex-direction: column;
+        background: linear-gradient(180deg, #16161f, #0e0e16);
+        border: 1px solid rgba(255,255,255,.12); border-radius: 18px;
+        box-shadow: 0 24px 60px rgba(0,0,0,.55);
+        animation: versionModalIn .22s ease;
+    }
+    @keyframes versionModalIn { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
+    .version-modal-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .version-modal-header h2 {
+        margin: 0; font-size: 18px; font-weight: 700;
+        background: linear-gradient(135deg, #7aa8ff, #c56bff);
+        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .version-modal-header h2 i { -webkit-text-fill-color: initial; color: #a97bff; margin-right: 6px; }
+    .version-modal-close {
+        background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+        color: #cfcfe0; width: 34px; height: 34px; border-radius: 9px; cursor: pointer;
+        transition: background .15s ease;
+    }
+    .version-modal-close:hover { background: rgba(255,255,255,.14); }
+    .version-modal-body { padding: 22px 24px; overflow-y: auto; }
+
+    .version-current {
+        background: rgba(120,90,255,.08); border: 1px solid rgba(140,90,255,.25);
+        border-radius: 12px; padding: 16px 18px; margin-bottom: 22px;
+    }
+    .version-current-label {
+        display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .5px;
+        color: #a97bff; font-weight: 600; margin-bottom: 12px;
+    }
+    .version-grid { display: grid; grid-template-columns: 90px 1fr; gap: 8px 14px; font-size: 14px; margin: 0; }
+    .version-grid dt { color: #9a9ab0; }
+    .version-grid dd { color: #e8e8f2; word-break: break-word; margin: 0; }
+    .version-grid dd code {
+        background: #0b0b14; border: 1px solid rgba(255,255,255,.14);
+        border-radius: 6px; padding: 2px 8px; font-size: 13px; color: #65ff9a;
+    }
+    .muted { color: #9a9ab0; font-size: 13px; line-height: 1.5; margin: 0; }
+
+    .version-history-title { font-size: 14px; color: #cfcfe0; margin: 0 0 14px; font-weight: 600; }
+    .version-timeline { list-style: none; margin: 0; padding: 0; }
+    .version-item {
+        position: relative; padding: 14px 16px; margin-bottom: 12px;
+        background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
+        border-radius: 12px; border-left: 3px solid #a97bff;
+    }
+    .version-item-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .version-item-tag {
+        font-size: 12px; font-weight: 700; color: #d9c9ff;
+        background: rgba(140,90,255,.18); border-radius: 6px; padding: 2px 9px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    .version-item-date { font-size: 12px; color: #9a9ab0; }
+    .version-item-title { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #f0f0f7; }
+    .version-item-changes { margin: 0 0 8px; padding-left: 18px; }
+    .version-item-changes li { font-size: 13px; color: #c9c9d6; line-height: 1.55; margin-bottom: 4px; }
+    .version-item-author { font-size: 12px; color: #8a8aa0; }
+    .version-item-author i { margin-right: 4px; }
+
+    @media (max-width: 600px) {
+        .admin-footer { flex-direction: column; align-items: flex-start; padding: 18px 20px; }
+        .version-grid { grid-template-columns: 78px 1fr; }
+    }
+    </style>
+
+    <script>
+    // ===== Modal de historial de versiones =====
+    function openVersionModal() {
+        document.getElementById('versionModal').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeVersionModal() {
+        document.getElementById('versionModal').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeVersionModal();
+    });
+    </script>
 
     <script>
     // Toggle sections
