@@ -1,0 +1,49 @@
+# LuxWrap Website - WordPress Multisite front controller
+DirectoryIndex index.php
+
+RewriteEngine On
+
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+RewriteRule ^index\.html$ / [R=301,L]
+
+<FilesMatch "^(\.env|\.env\..*|deploy\.log|\.gitignore|\.git|README\.md)$">
+    Require all denied
+    Deny from all
+</FilesMatch>
+
+RedirectMatch 404 /\.git
+RedirectMatch 404 /\.env
+RedirectMatch 404 ^/data/
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType text/html "access plus 5 minutes"
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Keep the existing dynamic admin, form handlers and static assets working.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# All other public routes are resolved by WordPress and LuxWrap Studio.
+RewriteRule ^ index.php [L,QSA]
+
+ErrorDocument 404 /index.php
