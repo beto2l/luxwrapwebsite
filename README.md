@@ -25,15 +25,17 @@ luxwrapstudio/
 └── .htaccess               # Configuración Apache
 ```
 
-## 🚀 Auto-Deploy desde GitHub
+## 🚀 Publicación desde WordPress
 
-El sitio se puede actualizar automáticamente visitando:
+El sitio público ahora se despliega con el módulo OPIN X LuxWrap Studio. Después de cambiar HTML o assets públicos, genera y publica un manifiesto nuevo:
 
+```bash
+php scripts/build-lw-release.php 1.0.1
 ```
-https://luxwrapstudio.com/deploy.php?secret=TU_SECRET_KEY
-```
 
-Ver `INSTRUCCIONES-GITHUB-DEPLOY.txt` para configuración completa.
+Luego entra al WordPress de este dominio, abre `OPIN X > LuxWrap Studio` y selecciona **Buscar e instalar actualización**. El módulo instala únicamente los archivos públicos listados con su checksum SHA-256 en `lw-release.json`; excluye PHP, credenciales, paneles administrativos y scripts de despliegue.
+
+El antiguo `deploy.php` se conserva en el repositorio solamente como referencia histórica y no forma parte de LW Release.
 
 ## 📞 Contacto
 
