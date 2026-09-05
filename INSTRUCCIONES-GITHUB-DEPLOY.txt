@@ -1,6 +1,6 @@
 ================================================================
   LUXWRAP STUDIO - INSTRUCCIONES DE INSTALACIÓN Y DEPLOY
-  Repositorio: github.com/beto2l/luxwrapstudio
+  Repositorio: github.com/beto2l/luxwrapwebsite
 ================================================================
 
 TABLA DE CONTENIDO:
@@ -63,7 +63,7 @@ PASO 2 - Copiar la llave pública:
   (Copiar TODO el texto que aparece)
 
 PASO 3 - Agregar la llave a GitHub:
-  1. Ir a: https://github.com/beto2l/luxwrapstudio/settings/keys
+  1. Ir a: https://github.com/beto2l/luxwrapwebsite/settings/keys
   2. Click "Add deploy key"
   3. Title: "Servidor Producción"
   4. Key: Pegar la llave copiada
@@ -72,7 +72,7 @@ PASO 3 - Agregar la llave a GitHub:
 
 PASO 4 - Probar conexión:
   ssh -T git@github.com
-  (Debe decir: "Hi beto2l/luxwrapstudio! You've been granted access")
+  (Debe decir: "Hi beto2l/luxwrapwebsite! You've been granted access")
 
 ================================================================
 4. CLONAR EL REPOSITORIO EN EL SERVIDOR
@@ -89,12 +89,12 @@ PASO 2 - Si ya hay archivos existentes, hacer backup:
 PASO 3 - Clonar el repositorio:
   
   OPCIÓN A - Si la carpeta public_html está vacía:
-    git clone git@github.com:beto2l/luxwrapstudio.git .
+    git clone git@github.com:beto2l/luxwrapwebsite.git .
     (El punto al final es importante - clona DENTRO de la carpeta actual)
   
   OPCIÓN B - Si ya hay archivos:
     cd ~
-    git clone git@github.com:beto2l/luxwrapstudio.git luxwrap_temp
+    git clone git@github.com:beto2l/luxwrapwebsite.git luxwrap_temp
     cp -r luxwrap_temp/* public_html/
     cp -r luxwrap_temp/.* public_html/  (para archivos ocultos como .htaccess)
     cd public_html
@@ -166,7 +166,7 @@ MÉTODO 3 - Webhook Automático (Avanzado)
 Configurar un webhook en GitHub para que el deploy se ejecute
 automáticamente cada vez que hagas push:
 
-1. Ir a: https://github.com/beto2l/luxwrapstudio/settings/hooks
+1. Ir a: https://github.com/beto2l/luxwrapwebsite/settings/hooks
 2. Click "Add webhook"
 3. Payload URL: https://luxwrapstudio.com/deploy.php?secret=TU_SECRET_KEY
 4. Content type: application/json
@@ -182,7 +182,7 @@ Ahora cada push a GitHub actualizará el sitio automáticamente.
 Para hacer cambios al sitio:
 
 DESDE GITHUB (más fácil):
-1. Ir a github.com/beto2l/luxwrapstudio
+1. Ir a github.com/beto2l/luxwrapwebsite
 2. Navegar al archivo que quieres cambiar
 3. Click el ícono de lápiz (editar)
 4. Hacer los cambios
@@ -190,7 +190,7 @@ DESDE GITHUB (más fácil):
 6. Visitar URL de deploy para actualizar el servidor
 
 DESDE TU COMPUTADORA (para cambios grandes):
-1. Clonar el repo: git clone git@github.com:beto2l/luxwrapstudio.git
+1. Clonar el repo: git clone git@github.com:beto2l/luxwrapwebsite.git
 2. Hacer cambios localmente
 3. git add .
 4. git commit -m "Descripción del cambio"
@@ -232,7 +232,7 @@ SOLUCIÓN:
   CONTACTO Y SOPORTE
 ================================================================
 
-Repositorio: https://github.com/beto2l/luxwrapstudio
+Repositorio: https://github.com/beto2l/luxwrapwebsite
 Email técnico: luxwrapstudioky@gmail.com
 
 ================================================================

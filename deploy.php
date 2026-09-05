@@ -24,7 +24,7 @@ if (!$secret || !hash_equals($secret, $providedSecret)) {
 $configuredPath = rtrim(luxwrap_env('SITE_PATH', ''), '/');
 $sitePath = ($configuredPath !== '' && is_dir($configuredPath)) ? $configuredPath : __DIR__;
 $branch = luxwrap_env('GIT_BRANCH', 'main');
-$repoZipUrl = luxwrap_env('GITHUB_ZIP_URL', 'https://github.com/beto2l/luxwrapstudio/archive/refs/heads/' . $branch . '.zip');
+$repoZipUrl = luxwrap_env('GITHUB_ZIP_URL', 'https://github.com/beto2l/luxwrapwebsite/archive/refs/heads/' . $branch . '.zip');
 $logFile = __DIR__ . '/deploy.log';
 
 function deploy_log($message) {
